@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1565d8">
+
+  <title>Hábitos</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Google Identity Services (botão "Entrar com o Google") -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+  <!-- ===== LOADING ===== -->
+  <div id="loadingScreen" class="screen center-screen">
+    <div class="loader-fire">🔥</div>
+    <p class="loading-text">Carregando...</p>
+  </div>
+
+  <!-- ===== TELA DE LOGIN (Google Sign-In) ===== -->
+  <div id="loginScreen" class="screen center-screen hidden">
+    <img id="loginLogo" class="welcome-logo hidden" alt="logo">
+    <h1 id="loginAppName" class="welcome-title">Hábitos</h1>
+    <p class="welcome-subtitle">Construa sua rotina, um dia de cada vez 🔥</p>
+    <div id="googleSignInDiv" style="margin-top: 18px;"></div>
+    <p class="muted" style="margin-top:14px;max-width:280px;">Entre com sua conta Google para continuar.</p>
+  </div>
+
+  <!-- ===== TELA DE CADASTRO ===== -->
+  <div id="registerScreen" class="screen center-screen hidden">
+    <h2 class="section-title">Vamos te conhecer 👋</h2>
+    <p class="muted">Sua conta Google já identifica seu e-mail. Só falta seu nome.</p>
+    <input id="registerNameInput" class="text-input" type="text" placeholder="Como podemos te chamar?" maxlength="40">
+    <button class="btn btn-primary" id="btnConfirmarCadastro">Concluir cadastro</button>
+  </div>
+
+  <!-- ===== APP PRINCIPAL ===== -->
+  <div id="appScreen" class="screen hidden">
+    <header class="app-header">
+      <img id="headerLogo" class="header-logo hidden" alt="logo">
+      <h1 id="headerAppName" class="header-app-name">Hábitos</h1>
+      <button id="btnLogout" class="header-logout-btn" title="Sair">⏻</button>
+    </header>
+
+    <main id="mainContent" class="main-content"></main>
+
+    <nav class="bottom-nav" id="bottomNav">
+      <button class="nav-btn active" data-tab="dashboard">
+        <span class="nav-icon">🏠</span><span>Início</span>
+      </button>
+      <button class="nav-btn" data-tab="planner">
+        <span class="nav-icon">📅</span><span>Semana</span>
+      </button>
+      <button class="nav-btn admin-only hidden" data-tab="adminUsers">
+        <span class="nav-icon">👥</span><span>Usuários</span>
+      </button>
+      <button class="nav-btn admin-only hidden" data-tab="adminBrand">
+        <span class="nav-icon">🎨</span><span>Marca</span>
+      </button>
+    </nav>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <div id="gardenModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h3>Seu quintal 🌤️</h3>
+        <button id="btnCloseGardenModal" class="modal-close-btn">✕</button>
+      </div>
+      <div id="gardenModalContent"></div>
+    </div>
+  </div>
+
+  <div id="monthModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h3>Calendário de foguinhos 🔥</h3>
+        <button id="btnCloseMonthModal" class="modal-close-btn">✕</button>
+      </div>
+      <div class="month-nav">
+        <button id="btnPrevMonth" class="month-nav-btn">←</button>
+        <div id="monthModalLabel" class="month-nav-label">—</div>
+        <button id="btnNextMonth" class="month-nav-btn">→</button>
+      </div>
+      <div id="monthModalGrid" class="month-grid"></div>
+      <div id="monthModalSummary" class="garden-modal-count"></div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
