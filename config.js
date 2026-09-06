@@ -4,7 +4,7 @@
  */
 window.APP_CONFIG = {
   // Client ID gerado no Google Cloud Console (Credenciais → OAuth Client ID → Web application).
-  GOOGLE_CLIENT_ID: 575499197045-5nudmf8u156dg6r4g02vqjj37t13t4is.apps.googleusercontent.com,
+  GOOGLE_CLIENT_ID: '575499197045-5nudmf8u156dg6r4g02vqjj37t13t4is.apps.googleusercontent.com',
 
   // URL de implantação do seu Apps Script, terminando em /exec.
   // (Extensões → Apps Script → Implantar → Gerenciar implantações → copiar a URL do "App da Web")
