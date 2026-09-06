@@ -481,6 +481,15 @@
     const main = $('#mainContent');
     const weeks = state.weeksList || [];
 
+    // Guarda a rolagem horizontal de cada semana ANTES de reconstruir o HTML
+    // (senão, toda vez que marcamos uma atividade, a tela volta pro primeiro
+    // dia da semana — porque innerHTML recria os elementos do zero).
+    const scrollByWeek = {};
+    $all('.week-block').forEach(block => {
+      const board = block.querySelector('.planner-board');
+      if (board) scrollByWeek[block.dataset.start] = board.scrollLeft;
+    });
+
     const weeksHtml = weeks.map(week => `
       <div class="week-block" data-start="${week.startDate}">
         <div class="week-block-range">${formatRange(week)}</div>
@@ -495,6 +504,13 @@
       <button class="new-week-btn" id="btnNewWeek">🗒️ Nova semana com lista de tarefas vazia</button>
       ${weeksHtml}
     `;
+
+    // Restaura a rolagem de cada semana pra posição de antes.
+    $all('.week-block').forEach(block => {
+      const board = block.querySelector('.planner-board');
+      const saved = scrollByWeek[block.dataset.start];
+      if (board && saved !== undefined) board.scrollLeft = saved;
+    });
 
     $('#btnNewWeek').addEventListener('click', () => {
       $('#btnNewWeek').textContent = 'Criando...';
