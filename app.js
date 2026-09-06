@@ -103,23 +103,53 @@
     }
   }
 
-  /* ---------- comunicação com o backend (Apps Script como API JSON) ---------- */
+  /* ---------- comunicação com o backend (Apps Script via JSONP) ---------- */
+  /*
+   * Não usamos fetch() aqui de propósito: o Apps Script não consegue
+   * devolver o cabeçalho Access-Control-Allow-Origin, então fetch()
+   * cross-origin é sempre bloqueado pelo navegador. Tags <script> não
+   * sofrem essa restrição — é a técnica clássica "JSONP".
+   */
+
+  let jsonpCounter = 0;
 
   function apiCall(action, ...args) {
-    return fetch(window.APP_CONFIG.APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS
-      body: JSON.stringify({ action, idToken: state.idToken, args })
-    })
-      .then(r => r.json())
-      .then(res => {
+    return new Promise((resolve, reject) => {
+      const cbName = '__habitosCb' + (jsonpCounter++) + '_' + Date.now();
+      const script = document.createElement('script');
+
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error('Tempo esgotado ao contatar o servidor. Verifique sua conexão.'));
+      }, 20000);
+
+      function cleanup() {
+        clearTimeout(timeoutId);
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[cbName] = (res) => {
+        cleanup();
         if (!res.ok) {
           const err = new Error(res.error || 'Erro desconhecido');
           err.isAuthError = /não autenticado|sessão expirada|token/i.test(res.error || '');
-          throw err;
+          reject(err);
+        } else {
+          resolve(res.data);
         }
-        return res.data;
-      });
+      };
+
+      const url = new URL(window.APP_CONFIG.APPS_SCRIPT_URL);
+      url.searchParams.set('action', action);
+      url.searchParams.set('idToken', state.idToken || '');
+      url.searchParams.set('args', JSON.stringify(args));
+      url.searchParams.set('callback', cbName);
+
+      script.src = url.toString();
+      script.onerror = () => { cleanup(); reject(new Error('Falha ao conectar com o servidor.')); };
+      document.body.appendChild(script);
+    });
   }
 
   // Mantido com o mesmo nome usado no resto do arquivo (dashboards, planner, admin...)
@@ -730,15 +760,26 @@
       <div class="admin-section">
         <h3>Logo (topo)</h3>
         ${cfg.logoUrl ? `<img class="preview-image" src="${cfg.logoUrl}">` : ''}
-        <input type="file" id="inputLogo" accept="image/*">
+        <form id="logoUploadForm" class="upload-form" target="uploadTargetFrame" method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="idToken" value="${state.idToken || ''}">
+          <input type="hidden" name="configKey" value="logoUrl">
+          <input type="file" name="file" id="inputLogo" accept="image/*">
+        </form>
       </div>
 
       <div class="admin-section">
         <h3>Imagem de rodapé</h3>
         ${cfg.footerImageUrl ? `<img class="preview-image" src="${cfg.footerImageUrl}">` : ''}
-        <input type="file" id="inputFooter" accept="image/*">
+        <form id="footerUploadForm" class="upload-form" target="uploadTargetFrame" method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="idToken" value="${state.idToken || ''}">
+          <input type="hidden" name="configKey" value="footerImageUrl">
+          <input type="file" name="file" id="inputFooter" accept="image/*">
+        </form>
       </div>
     `;
+
+    $('#logoUploadForm').action = window.APP_CONFIG.APPS_SCRIPT_URL;
+    $('#footerUploadForm').action = window.APP_CONFIG.APPS_SCRIPT_URL;
 
     $('#btnSaveName').addEventListener('click', () => {
       const name = $('#inputAppName').value.trim();
@@ -748,24 +789,35 @@
       }).catch(err => toast('Erro: ' + err.message));
     });
 
-    $('#inputLogo').addEventListener('change', e => handleImageUpload(e, 'logoUrl'));
-    $('#inputFooter').addEventListener('change', e => handleImageUpload(e, 'footerImageUrl'));
+    $('#inputLogo').addEventListener('change', () => submitUploadForm('logoUploadForm', 'logoUrl'));
+    $('#inputFooter').addEventListener('change', () => submitUploadForm('footerUploadForm', 'footerImageUrl'));
   }
 
-  function handleImageUpload(e, configKey) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      toast('Enviando imagem...');
-      runServer('adminUploadImage', reader.result, file.name, configKey).then(url => {
-        state.config[configKey] = url;
+  /**
+   * Envia a imagem via <form multipart> de verdade pra um iframe oculto —
+   * não usa fetch() de propósito (mesma razão do apiCall: CORS não dá pra
+   * contornar com fetch aqui, mas um envio de formulário não sofre CORS).
+   * Como o iframe é de outra origem, não dá pra ler a resposta por JS — por
+   * isso, depois de um tempinho, a gente só recarrega a configuração pra
+   * conferir se a imagem nova já está lá.
+   */
+  function submitUploadForm(formId, configKey) {
+    const form = $('#' + formId);
+    const fileInput = form.querySelector('input[type="file"]');
+    if (!fileInput.files || !fileInput.files[0]) return;
+
+    toast('Enviando imagem...');
+    form.querySelector('input[name="idToken"]').value = state.idToken || '';
+    form.submit();
+
+    setTimeout(() => {
+      runServer('getBootstrapData').then(data => {
+        state.config = data.config || state.config;
         applyBranding();
-        renderAdminBrand();
+        if (state.activeTab === 'adminBrand') renderAdminBrand();
         toast('Imagem atualizada!');
-      }).catch(err => toast('Erro: ' + err.message));
-    };
-    reader.readAsDataURL(file);
+      }).catch(() => toast('Envio concluído — recarregue a página se a imagem não aparecer.'));
+    }, 3000);
   }
 
   /* ================= EVENTOS GERAIS ================= */
