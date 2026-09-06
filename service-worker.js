@@ -9,9 +9,9 @@ const SHELL_FILES = [
   './styles.css',
   './app.js',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/apple-touch-icon.png'
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png'
   // OBS: config.js NÃO entra aqui de propósito — é o arquivo que você mais
   // provavelmente vai editar (Client ID, URL do Apps Script), então ele
   // sempre busca a versão mais nova da rede (ver fetch handler abaixo).
