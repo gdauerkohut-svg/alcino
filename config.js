@@ -7,5 +7,5 @@ window.APP_CONFIG = {
   GOOGLE_CLIENT_ID: '575499197045-5nudmf8u156dg6r4g02vqjj37t13t4is.apps.googleusercontent.com',
 
   // URL de implantação do seu Apps Script, terminando em /exec.
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxDopLMM53GQ0_KOsBSvuomUe_lbuEDtW2Q14iklQKSOvna1KwWF8SQO-5KzObGZutJ/exec'
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwWvgHk78feB4e3Msj47NzLTGkZnprATdl9JHsrakLf-pJBT7Fz3D9X9PjrjECfSdKT/exec'
 };
