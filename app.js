@@ -155,15 +155,21 @@
   // Mantido com o mesmo nome usado no resto do arquivo (dashboards, planner, admin...)
   function runServer(fnName, ...args) {
     return apiCall(fnName, ...args).catch(err => {
-      if (err.isAuthError) {
+      if (!err.isAuthError) throw err;
+      // Antes de desistir e mandar pra tela de login, tenta uma renovação
+      // silenciosa (funciona se a conta Google ainda está ativa no navegador).
+      return trySilentRenewal().then(renewed => {
+        if (renewed) return apiCall(fnName, ...args); // token novo: tenta de novo
         toast('Sessão expirada. Faça login novamente.');
         logout();
-      }
-      throw err;
+        throw err;
+      });
     });
   }
 
   /* ---------- login com Google (Google Identity Services) ---------- */
+
+  let gisInitialized = false;
 
   function decodeJwt(token) {
     const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -193,20 +199,35 @@
   function logout() {
     state.idToken = null;
     localStorage.removeItem('habitos_id_token');
+    // impede que a renovação automática logue de volta assim que a pessoa
+    // acabou de escolher "Sair" de propósito.
+    if (window.google && google.accounts && google.accounts.id) {
+      try { google.accounts.id.disableAutoSelect(); } catch (e) {}
+    }
     show('loginScreen');
     renderGoogleButton();
   }
 
+  /** Garante que google.accounts.id.initialize() rodou uma única vez (precisa
+   *  rodar cedo, mesmo fora da tela de login, pra renovação em segundo plano funcionar). */
+  function initGoogleIdentity() {
+    if (gisInitialized) return true;
+    if (!window.google || !google.accounts || !google.accounts.id) return false;
+    google.accounts.id.initialize({
+      client_id: window.APP_CONFIG.GOOGLE_CLIENT_ID,
+      callback: handleGoogleCredential,
+      auto_select: true,
+      cancel_on_tap_outside: false
+    });
+    gisInitialized = true;
+    return true;
+  }
+
   function renderGoogleButton() {
-    if (!window.google || !google.accounts || !google.accounts.id) {
-      // biblioteca do Google ainda não carregou; tenta de novo em breve
+    if (!initGoogleIdentity()) {
       setTimeout(renderGoogleButton, 300);
       return;
     }
-    google.accounts.id.initialize({
-      client_id: window.APP_CONFIG.GOOGLE_CLIENT_ID,
-      callback: handleGoogleCredential
-    });
     $('#googleSignInDiv').innerHTML = '';
     google.accounts.id.renderButton($('#googleSignInDiv'), {
       theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with'
@@ -215,7 +236,43 @@
 
   function handleGoogleCredential(response) {
     saveToken(response.credential);
+    if (state.user) return; // renovação em segundo plano: já estava logado, nada a mudar na tela
     boot();
+  }
+
+  /**
+   * Tenta obter um token novo sem interromper o usuário (usa a sessão Google
+   * que já está ativa no navegador, se houver). Resolve true se conseguiu
+   * um token novo dentro do tempo de espera, false se não.
+   */
+  function trySilentRenewal() {
+    return new Promise(resolve => {
+      if (!initGoogleIdentity()) return resolve(false);
+      const tokenBefore = state.idToken;
+      try {
+        google.accounts.id.prompt();
+      } catch (e) {
+        return resolve(false);
+      }
+      setTimeout(() => resolve(state.idToken !== tokenBefore), 2000);
+    });
+  }
+
+  // Confere a cada 5 minutos se o token está perto de expirar e já renova
+  // sozinho antes disso acontecer — assim, na maior parte do tempo, a pessoa
+  // nem percebe que o login "vencia" de hora em hora.
+  let tokenWatcherStarted = false;
+  function startTokenWatcher() {
+    if (tokenWatcherStarted) return;
+    tokenWatcherStarted = true;
+    setInterval(() => {
+      if (!state.idToken) return;
+      try {
+        const payload = decodeJwt(state.idToken);
+        const msLeft = payload.exp * 1000 - Date.now();
+        if (msLeft < 10 * 60 * 1000) trySilentRenewal();
+      } catch (e) {}
+    }, 5 * 60 * 1000);
   }
 
   /* ---------- boot ---------- */
@@ -247,6 +304,7 @@
     }
     show('appScreen');
     switchTab('dashboard');
+    startTokenWatcher();
   }
 
   /* ---------- navegação ---------- */
@@ -840,6 +898,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     state.idToken = loadStoredToken();
+    initGoogleIdentity();
     boot();
 
     $('#btnConfirmarCadastro').addEventListener('click', () => {
