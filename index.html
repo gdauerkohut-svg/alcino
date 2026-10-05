@@ -6,9 +6,9 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#1565d8">
+  <meta name="theme-color" content="#3B82F6">
 
-  <title>Hábitos</title>
+  <title>Alcino</title>
 
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="favicon.png">
@@ -18,6 +18,10 @@
 
   <!-- Google Identity Services (botão "Entrar com o Google") -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Firebase (notificações push) -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
 </head>
 <body>
 
@@ -49,7 +53,10 @@
     <header class="app-header">
       <img id="headerLogo" class="header-logo hidden" alt="logo">
       <h1 id="headerAppName" class="header-app-name">Hábitos</h1>
-      <button id="btnLogout" class="header-logout-btn" title="Sair">⏻</button>
+      <div class="header-right-actions">
+        <button id="btnNotifications" class="header-icon-btn" title="Notificações">🔕</button>
+        <button id="btnLogout" class="header-icon-btn" title="Sair">⏻</button>
+      </div>
     </header>
 
     <main id="mainContent" class="main-content"></main>

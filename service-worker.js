@@ -1,6 +1,30 @@
-// Service Worker do Hábitos — cacheia só o "app shell" (HTML/CSS/JS/ícones).
+// Service Worker do Hábitos — cacheia só o "app shell" (HTML/CSS/JS/ícones)
+// e também cuida de mostrar notificações push quando o app está fechado.
 // Os dados (dashboards, atividades, etc) sempre vêm da rede, direto da API do
 // Apps Script — nunca são cacheados aqui, pra evitar mostrar informação velha.
+
+importScripts('config.js'); // define self.APP_CONFIG (mesmo arquivo usado pela página)
+importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
+
+if (self.APP_CONFIG && self.APP_CONFIG.FIREBASE_CONFIG && self.APP_CONFIG.FIREBASE_CONFIG.apiKey) {
+  try {
+    firebase.initializeApp(self.APP_CONFIG.FIREBASE_CONFIG);
+    const messaging = firebase.messaging();
+    // Mostra a notificação quando o app NÃO está em primeiro plano.
+    messaging.onBackgroundMessage(payload => {
+      const title = (payload.notification && payload.notification.title) || 'Hábitos';
+      const body = (payload.notification && payload.notification.body) || '';
+      self.registration.showNotification(title, {
+        body,
+        icon: './icon-192.png',
+        badge: './icon-192.png'
+      });
+    });
+  } catch (e) {
+    // FIREBASE_CONFIG ainda não preenchido no config.js — segue sem notificações.
+  }
+}
 
 const CACHE_NAME = 'habitos-shell-v2'; // versão trocada de propósito: invalida caches antigos de instalações anteriores
 const SHELL_FILES = [
@@ -16,6 +40,18 @@ const SHELL_FILES = [
   // provavelmente vai editar (Client ID, URL do Apps Script), então ele
   // sempre busca a versão mais nova da rede (ver fetch handler abaixo).
 ];
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      for (const client of windowClients) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('./');
+    })
+  );
+});
 
 self.addEventListener('install', event => {
   event.waitUntil(

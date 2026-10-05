@@ -1,18 +1,19 @@
 :root {
-    --blue-900: #0b3d91;
-    --blue-700: #1565d8;
-    --blue-500: #3b82f6;
-    --blue-300: #93c5fd;
-    --blue-100: #e8f1ff;
+    --blue-900: #12324A;
+    --blue-700: #3B82F6;
+    --blue-500: #5B9CF8;
+    --blue-300: #9CC5FB;
+    --blue-100: #EAF3FF;
     --white: #ffffff;
-    --ink: #1c2b3a;
+    --ink: #12324A;
     --muted: #6b7c93;
-    --green: #58cc02;
+    --green: #2DD4A0;
     --orange: #ff9600;
     --radius-lg: 24px;
     --radius-md: 16px;
-    --shadow-card: 0 8px 24px rgba(21, 101, 216, 0.12);
+    --shadow-card: 0 8px 24px rgba(59, 130, 246, 0.14);
     --shadow-btn: 0 4px 0 rgba(0,0,0,0.15);
+    --brand-gradient: linear-gradient(135deg, #2DD4A0 0%, #3B82F6 100%);
   }
 
   * { box-sizing: border-box; }
@@ -119,11 +120,15 @@
   .header-logo { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; position: absolute; left: 16px; }
   .header-app-name { font-size: 18px; font-weight: 800; color: var(--blue-900); text-align: center; }
   .header-spacer { width: 0; }
-  .header-logout-btn {
-    position: absolute; right: 14px;
-    background: none; border: none; font-size: 17px; color: var(--muted);
-    cursor: pointer; padding: 4px 6px;
+  .header-right-actions {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    display: flex; align-items: center; gap: 2px;
   }
+  .header-icon-btn {
+    background: none; border: none; font-size: 17px; color: var(--muted);
+    cursor: pointer; padding: 6px 8px; border-radius: 8px;
+  }
+  .header-icon-btn.active { color: var(--blue-700); }
 
   .main-content { padding: 16px 16px 90px 16px; max-width: 720px; margin: 0 auto; }
 

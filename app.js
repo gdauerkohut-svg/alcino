@@ -3,7 +3,7 @@
 
   const state = {
     user: null,
-    config: { appName: 'Hábitos', logoUrl: '', footerImageUrl: '' },
+    config: { appName: 'Alcino', logoUrl: 'logo-mark-only.svg', footerImageUrl: '' },
     weeksList: [],
     dashboard: null,
     activeTab: 'dashboard',
@@ -140,7 +140,7 @@
         }
       };
 
-      const url = new URL(window.APP_CONFIG.APPS_SCRIPT_URL);
+      const url = new URL(self.APP_CONFIG.APPS_SCRIPT_URL);
       url.searchParams.set('action', action);
       url.searchParams.set('idToken', state.idToken || '');
       url.searchParams.set('args', JSON.stringify(args));
@@ -214,7 +214,7 @@
     if (gisInitialized) return true;
     if (!window.google || !google.accounts || !google.accounts.id) return false;
     google.accounts.id.initialize({
-      client_id: window.APP_CONFIG.GOOGLE_CLIENT_ID,
+      client_id: self.APP_CONFIG.GOOGLE_CLIENT_ID,
       callback: handleGoogleCredential,
       auto_select: true,
       cancel_on_tap_outside: false
@@ -305,6 +305,7 @@
     show('appScreen');
     switchTab('dashboard');
     startTokenWatcher();
+    updateNotifBtnUI();
   }
 
   /* ---------- navegação ---------- */
@@ -852,8 +853,8 @@
       </div>
     `;
 
-    $('#logoUploadForm').action = window.APP_CONFIG.APPS_SCRIPT_URL;
-    $('#footerUploadForm').action = window.APP_CONFIG.APPS_SCRIPT_URL;
+    $('#logoUploadForm').action = self.APP_CONFIG.APPS_SCRIPT_URL;
+    $('#footerUploadForm').action = self.APP_CONFIG.APPS_SCRIPT_URL;
 
     $('#btnSaveName').addEventListener('click', () => {
       const name = $('#inputAppName').value.trim();
@@ -894,6 +895,79 @@
     }, 3000);
   }
 
+  /* ================= NOTIFICAÇÕES PUSH (Firebase) ================= */
+
+  let firebaseMessaging = null;
+
+  function initFirebaseMessaging() {
+    if (firebaseMessaging) return firebaseMessaging;
+    if (!window.firebase || !self.APP_CONFIG.FIREBASE_CONFIG || !self.APP_CONFIG.FIREBASE_CONFIG.apiKey) return null;
+    try {
+      if (!firebase.apps || !firebase.apps.length) {
+        firebase.initializeApp(self.APP_CONFIG.FIREBASE_CONFIG);
+      }
+      firebaseMessaging = firebase.messaging();
+      return firebaseMessaging;
+    } catch (e) {
+      console.error('Firebase init falhou:', e);
+      return null;
+    }
+  }
+
+  function updateNotifBtnUI() {
+    const btn = $('#btnNotifications');
+    if (!btn) return;
+    const supported = 'Notification' in window;
+    const granted = supported && Notification.permission === 'granted' && !!localStorage.getItem('habitos_push_token');
+    btn.textContent = granted ? '🔔' : '🔕';
+    btn.classList.toggle('active', granted);
+    btn.title = granted ? 'Notificações ativadas (toque pra desativar)' : 'Ativar notificações';
+  }
+
+  async function toggleNotifications() {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+      toast('Seu navegador não suporta notificações push.');
+      return;
+    }
+
+    const alreadyOn = Notification.permission === 'granted' && !!localStorage.getItem('habitos_push_token');
+    if (alreadyOn) {
+      // Não dá pra "desligar" a permissão do navegador por JS — só orientamos a
+      // pessoa a desativar manualmente, e paramos de mandar notificações daqui.
+      localStorage.removeItem('habitos_push_token');
+      updateNotifBtnUI();
+      toast('Notificações desativadas neste dispositivo.');
+      return;
+    }
+
+    const messaging = initFirebaseMessaging();
+    if (!messaging) {
+      toast('Notificações push não configuradas neste app ainda.');
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        toast('Permissão de notificação não concedida.');
+        return;
+      }
+      const registration = await navigator.serviceWorker.ready;
+      const token = await messaging.getToken({
+        vapidKey: self.APP_CONFIG.FIREBASE_VAPID_KEY,
+        serviceWorkerRegistration: registration
+      });
+      if (!token) { toast('Não foi possível obter o token de notificação.'); return; }
+
+      await runServer('saveNotificationToken', token);
+      localStorage.setItem('habitos_push_token', token);
+      updateNotifBtnUI();
+      toast('Notificações ativadas! 🔔');
+    } catch (err) {
+      toast('Erro ao ativar notificações: ' + err.message);
+    }
+  }
+
   /* ================= EVENTOS GERAIS ================= */
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -917,6 +991,8 @@
     $('#btnLogout').addEventListener('click', () => {
       if (confirm('Sair da sua conta?')) logout();
     });
+
+    $('#btnNotifications').addEventListener('click', toggleNotifications);
 
     $all('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
